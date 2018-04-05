@@ -5,9 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
     <title>RobotsTxtChecker</title>
 </head>
 <body>
+<script>
+$(document).ready(function(){
+    $('.button').click(function(){
+        var clickBtnValue = $(this).val();
+        var ajaxurl = 'get.php',
+        data =  {'action': clickBtnValue};
+        $.post(ajaxurl, data, function (response) {
+            // Response div goes here.
+            alert("action performed successfully");
+        });
+    });
+
+});
+</script>
 
 <!--_________________________________________-->
 <div class="container">
@@ -21,9 +38,7 @@
             <form action="get.php" method="POST">
                 <input name="URL" type="text" placeholder="URL">
                 <input type='submit' value='Отправить'>
-            </form>
-            <form action="get.php" method="POST">
-                <input name="download" type='submit' value='скачать'>
+                <input class="button" type='submit' name="download" value='скачать'>
             </form>
         </div>
     </div>
@@ -35,7 +50,7 @@
 global $response, $hostNumb, $isSitemap, $resultfile;
 
 if(!empty($_POST['URL'])) {
-$getfile = $_POST['URL'] . 'robots.txt'; // добавляем имя файла
+$getfile = $_POST['URL'] . '/robots.txt'; // добавляем имя файла
 $file_headers = @get_headers($getfile); // подготавливаем headers страницы
  
 if ($file_headers[0] != 'HTTP/1.1 200 OK') {
@@ -59,7 +74,7 @@ if ($file_headers[0] != 'HTTP/1.1 200 OK') {
 if (!file_exists($resultfile)) {
     // Если файл отсутвует, сообщаем ошибку
     //echo "Ошибка обработки файла: $resultfile";
-    $resultfile = "Ошибка";
+    $resultfile = "Ошибка"; 
  
 } else {
     // Начинаем обрабатывать файл, если все прошло успешно
@@ -204,24 +219,6 @@ echo "
         fpassthru($f);
     }
 
-$firstArr = array();
-$secondArr  = array();
-$thirdArrm = array();
-$fourthArr = array();
-$fifthArr = array();
-$sixArr = array();
-
-
-    /*array_to_csv_download(array(
-        array(
-        "Название проверки",
-        "Статус",
-        " ",
-        "Текущее состояние"), 
-        array(1,2,3,4)), 
-        "numbers.csv"
-      );*/
-
 
 
     for ($i = 0; $i < 6; $i++) {
@@ -232,7 +229,6 @@ $sixArr = array();
         switch ($i) {
             case 0:
                 if (file_exists($resultfile)) {
-                    array_push($firstArr, $verifiTitle[$i]);
                     ok($i, $okState, $resultfile);
                 }else {
                     neOk($i, $errState, $errRecommend, $response, $resultfile);
@@ -248,6 +244,8 @@ $sixArr = array();
             case 2:
                 if ($hostNumb != 1 && $hostNumb > 0) {
                     ok($i, $okState, $resultfile);
+                }elseif($hostNumb == 0) {
+                    neOk($i,0,0,0,0);
                 }else {
                     neOk($i, $errState, $errRecommend, $response, $resultfile);
                 }
@@ -255,6 +253,8 @@ $sixArr = array();
             case 3:
                 if (filesize($resultfile) <= 32000) {
                     ok($i, $okState, $resultfile);
+                }elseif (filesize($resultfile) == 0) {
+                    neOk($i,0,0,0,0);
                 }else {
                     neOk($i, $errState, $errRecommend, $response, $resultfile);
                 }
@@ -277,7 +277,7 @@ $sixArr = array();
     }    
   echo "</tbody>
 </table>";
- 
+
  //--------------------------------------------------   
 
 ?>
