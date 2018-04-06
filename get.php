@@ -11,20 +11,6 @@
     <title>RobotsTxtChecker</title>
 </head>
 <body>
-<script>
-$(document).ready(function(){
-    $('.button').click(function(){
-        var clickBtnValue = $(this).val();
-        var ajaxurl = 'get.php',
-        data =  {'action': clickBtnValue};
-        $.post(ajaxurl, data, function (response) {
-            // Response div goes here.
-            alert("action performed successfully");
-        });
-    });
-
-});
-</script>
 
 <!--_________________________________________-->
 <div class="container">
@@ -36,9 +22,11 @@ $(document).ready(function(){
     <div class="row">
         <div class="col-md-auto mx-auto mt-10">
             <form action="get.php" method="POST">
-                <input name="URL" type="text" placeholder="URL">
+                <input name="URL" type="text" placeholder="https://yandex.ru/">
                 <input type='submit' value='Отправить'>
-                <input class="button" type='submit' name="download" value='скачать'>
+            </form>
+            <form action="download.php" method="POST">
+                <input type='submit' value='Скачать'>
             </form>
         </div>
     </div>
@@ -46,18 +34,20 @@ $(document).ready(function(){
 
 
 <?php
-
+session_start();
 global $response, $hostNumb, $isSitemap, $resultfile;
 
 if(!empty($_POST['URL'])) {
-$getfile = $_POST['URL'] . '/robots.txt'; // добавляем имя файла
+$getfile = $_POST['URL'] . 'robots.txt'; // добавляем имя файла
 $file_headers = @get_headers($getfile); // подготавливаем headers страницы
  
-if ($file_headers[0] != 'HTTP/1.1 200 OK') {
- 
+
+if (!strripos($file_headers[0], '200 OK')) {
+    //при ошибке
     $response = $file_headers[0];
+
  
-} else if ($file_headers[0] == 'HTTP/1.1 200 OK') {
+} else if (strripos($file_headers[0], '200 OK')) {
     $response = $file_headers[0];
     // открываем файл для записи
     $file = fopen('robots.txt', 'w');
@@ -70,7 +60,7 @@ if ($file_headers[0] != 'HTTP/1.1 200 OK') {
           curl_close($ch);
  
        $resultfile = 'robots.txt';
- 
+
 if (!file_exists($resultfile)) {
     // Если файл отсутвует, сообщаем ошибку
     //echo "Ошибка обработки файла: $resultfile";
@@ -81,13 +71,14 @@ if (!file_exists($resultfile)) {
     // $file_arr = file("robots.txt");
     $textget = file_get_contents($resultfile);
                htmlspecialchars($textget); // при желании, можно вывести на экран через echo
- 
-    if (preg_match("/Host/", $textget)) {
+    if (preg_match("/Host:/", $textget)) {
         $count = substr_count($textget,'Host');
-        $hostNumb = "Количество директив Host: ". $count . " ";
+        $hostNumb = $count;//"Количество директив Host: ". $count . " ";
     } else {
-        $hostNumb = "Дерективы Host нет. ";
+        $count = substr_count($textget,'Host');
+        $hostNumb = $count;
     }
+    //echo $hostNumb;
 
     if (preg_match("/Sitemap/", $textget)) {
         $isSitemap = "Директива Sitemap указана";
@@ -171,7 +162,7 @@ echo "
             if ($i != 3) {
                echo "<td>".$okState[$i]."</td>";
             }else {
-                echo "<td>".str_replace("$", filesize($resultfile), $okState[$i])."</td>";
+                echo "<td>".str_replace("$", filesize($resultfile)." байт", $okState[$i])."</td>";
             }
         echo "
         </tr>
@@ -193,7 +184,7 @@ echo "
             if($i != 3 || $i != 5){
                 echo $errState[$i];
             }elseif($i == 3){
-               echo str_replace("$", filesize($resultfile), $errState[$i]);
+               echo str_replace("$", filesize($resultfile)." байт", $errState[$i]);
             }elseif($i == 5){
                 echo str_replace("$", $response, $errState[$i]); 
              }
@@ -208,17 +199,14 @@ echo "
 
 
 
-    function array_to_csv_download($array, $filename = "export.csv", $delimiter=";") {
-        $f = fopen('php://memory', 'w');
-        foreach ($array as $line) {
-            fputcsv($f, $line, $delimiter); 
-        }
-        fseek($f, 0);
-        header('Content-Type: application/csv');
-        header('Content-Disposition: attachment; filename="'.$filename.'";');
-        fpassthru($f);
-    }
-
+    $headArr = array("Название проверки","Статус"," ","	Текущее состояние");
+    $firstArr = array("Проверка наличия файла robots.txt");
+    $secondArr = array("Проверка указания директивы Host");
+    $thirdArr = array("Проверка количества директив Host, прописанных в файле");
+    $fourthArr = array("Проверка размера файла robots.txt");
+    $fifthArr = array("Проверка указания директивы Sitemap");
+    $sixArr = array("Проверка кода ответа сервера для файла robots.txt");
+    $completeArr = array();
 
 
     for ($i = 0; $i < 6; $i++) {
@@ -230,53 +218,72 @@ echo "
             case 0:
                 if (file_exists($resultfile)) {
                     ok($i, $okState, $resultfile);
+                    array_push($firstArr, "OK", "Cостояние", $okState[$i], "Рекомендации", "Доработки не требуются");
                 }else {
                     neOk($i, $errState, $errRecommend, $response, $resultfile);
+                    array_push($firstArr, "Ошибка", "Cостояние", $errState[$i], "Рекомендации", $errRecommend[$i]);
                 }
                 break;
             case 1:
-                if ($hostNumb != 0) {
+                if ($hostNumb > 0) {
                     ok($i, $okState, $resultfile);
+                    array_push($secondArr, "OK", "Cостояние", $okState[$i], "Рекомендации", "Доработки не требуются");
                 }else {
                     neOk($i, $errState, $errRecommend, $response, $resultfile);
+                    array_push($secondArr, "Ошибка", "Cостояние", $errState[$i], "Рекомендации", $errRecommend[$i]);
                 }
                 break;
             case 2:
-                if ($hostNumb != 1 && $hostNumb > 0) {
+                if ($hostNumb == 1) {
                     ok($i, $okState, $resultfile);
+                    array_push($thirdArr, "OK", "Cостояние", $okState[$i], "Рекомендации", "Доработки не требуются");
                 }elseif($hostNumb == 0) {
                     neOk($i,0,0,0,0);
                 }else {
                     neOk($i, $errState, $errRecommend, $response, $resultfile);
+                    array_push($thirdArr, "Ошибка", "Cостояние", $errState[$i], "Рекомендации", $errRecommend[$i]);
                 }
                 break;
             case 3:
                 if (filesize($resultfile) <= 32000) {
                     ok($i, $okState, $resultfile);
-                }elseif (filesize($resultfile) == 0) {
+                    array_push($fourthArr, "OK", "Cостояние", str_replace("$", filesize($resultfile)." байт", $errState[$i]), "Рекомендации", "Доработки не требуются");
+                }elseif (filesize($resultfile) == null) {
                     neOk($i,0,0,0,0);
                 }else {
                     neOk($i, $errState, $errRecommend, $response, $resultfile);
+                    array_push($fourthArr, "Ошибка", "Cостояние", str_replace("$", filesize($resultfile)." байт", $errState[$i]) , "Рекомендации", $errRecommend[$i]);
                 }
                 break;
             case 4:
                 if ($isSitemap == "Директива Sitemap указана") {
                     ok($i, $okState, $resultfile);
+                    array_push($fifthArr, "OK", "Cостояние", $okState[$i], "Рекомендации", "Доработки не требуются");
                 }else {
                     neOk($i, $errState, $errRecommend, $response, $resultfile);
+                    array_push($fifthArr, "Ошибка", "Cостояние", $errState[$i], "Рекомендации", $errRecommend[$i]);
                 }
-                break;
+                break;  
             case 5: 
-                if ($response == "HTTP/1.1 200 OK") {
+                if (strripos($file_headers[0], '200 OK')) {
                     ok($i, $okState, $resultfile);
-                }else {
+                    array_push($sixArr, "OK", "Cостояние", $okState[$i], "Рекомендации", "Доработки не требуются");
+                }else {     
                     neOk($i, $errState, $errRecommend, $response, $resultfile);
+                    array_push($sixArr, "Ошибка", "Cостояние", $errState[$i], "Рекомендации", $errRecommend[$i]);
                 }
                 break;
         }
-    }    
+    }
+
+    
+
+    array_push($completeArr, $headArr, $firstArr, $secondArr, $thirdArr, $fourthArr, $fifthArr, $sixArr);
+
+    $_SESSION['array'] = $completeArr;
+
   echo "</tbody>
-</table>";
+</table>";  
 
  //--------------------------------------------------   
 
